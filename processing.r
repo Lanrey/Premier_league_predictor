@@ -1,3 +1,4 @@
+
 library(DataCombine)
 library(rpart)
 library(stringr)
@@ -8,72 +9,71 @@ library(digest)
 
 options(stringsAsFactors = F)
 #Get standard league table from skysports.com
-Dat = NULL
+Dat <- NULL
 for (i in 2009:2017){
-teamStats = readHTMLTable(paste0('http://www.skysports.com/premier-league-table/',i))
-names(teamStats) = NULL
-teamStats = data.frame(teamStats)
-teamStats$Year = i
-Dat = rbind(Dat,teamStats)
+teamStats <- readHTMLTable(paste0("http://www.skysports.com/premier-league-table/", i))
+names(teamStats) <- NULL
+teamStats <- data.frame(teamStats)
+teamStats$Year <- i
+Dat <- rbind(Dat, teamStats)
 print(Dat)
 flush.console()
 }
 
 ####Housekeeping!#####
-Dat$X. = NULL
-Dat$Last.6 = NULL
+Dat$X. <- NULL
+Dat$Last.6 <- NULL
 
 #You see that as.character right there? it's probably the most useful life lesson in R
 #When changing data types, it 100% much safer to convert to a character first.
 #Trust me when I say I have learnt the hard way
-Dat[,2:9] = apply(Dat[,2:9],2,function(x) as.integer(as.character(x)))
-Dat$Team = factor(str_replace_all(as.character(Dat$Team),pattern = "[*]",''))
+Dat[,2:9] <- apply(Dat[,2:9],2,function(x) as.integer(as.character(x)))
+Dat$Team <- factor(str_replace_all(as.character(Dat$Team),pattern = "[*]",''))
 
 #Create a lead variable for the Premier League points 
-datasetLagged = slide(Dat,Var = "Pts",TimeVar = "Year",GroupVar = "Team",slideBy = +1)
-names(datasetLagged)[ncol(datasetLagged)] = 'leadPoints'
+datasetLagged <- slide(Dat,Var = "Pts",TimeVar = "Year",GroupVar = "Team",slideBy = +1)
+names(datasetLagged)[ncol(datasetLagged)] <- 'leadPoints'
 
 
 ####Rendering whoscored.com website using a remote selenium driver and getting data####
-
-#startServer()
-remDr = remoteDriver()
-remDr$open(silent = F)
+#rD <- rsDriver(verbose = FALSE)
+remDr <- remoteDriver(port = 4445L)
+remDr$open()
 remDr$navigate("https://www.whoscored.com/Regions/252/Tournaments/2/Seasons/5826/Stages/12496/TeamStatistics/England-Premier-League-2015-2016")
 remDr$setImplicitWaitTimeout(30000)
-inTable = NULL
+inTable <- NULL
 for (i in 2:8){
-clicktype = remDr$findElement(using = "css selector", '#seasons')
+clicktype <- remDr$findElement(using = "css selector", '#seasons')
 remDr$mouseMoveToLocation(webElement = clicktype)
 clicktype$click()
-clicktype = remDr$findElement(using = "css selector", paste0('#seasons > option:nth-child(',i,')'))
+clicktype <- remDr$findElement(using = "css selector", paste0('#seasons > option:nth-child(',i,')'))
 remDr$mouseMoveToLocation(webElement = clicktype)
 clicktype$click()
-clicktype = remDr$findElement(using = "css selector", '#sub-navigation > ul:nth-child(1) > li:nth-child(3) > a:nth-child(1)')
+clicktype <- remDr$findElement(using = "css selector", '#sub-navigation > ul:nth-child(1) > li:nth-child(3) > a:nth-child(1)')
 remDr$mouseMoveToLocation(webElement = clicktype)
 clicktype$click()
-doc = remDr$getPageSource()[[1]]
-current_doc = read_html(doc)
-firstTable = htmlParse(remDr$getPageSource()[[1]])
+doc <- remDr$getPageSource()[[1]]
+current_doc <- read_html(doc)
+firstTable <- htmlParse(remDr$getPageSource()[[1]])
 
 #Housekeeping!
-v=readHTMLTable(firstTable, as.data.frame = T)
-v= v[c(1,3,6)]
+v = readHTMLTable(firstTable, as.data.frame = T)
+v = v[c(1,3,6)]
 names(v) = NULL
-v=lapply(v, function(x){data.frame(x)})
-testData =Reduce(function(x,y) merge(x,y,by="Team", all = T),v)
-testData[,2:15] = apply(testData[,2:15],2,function(x) as.numeric(as.character(x)))
-testData$RedCards = substring(as.character(testData$Discipline),nchar(as.character(testData$Discipline)))
-testData$YellowCards = substring(as.character(testData$Discipline),1,nchar(as.character(testData$Discipline))-1)
-testData$Discipline = NULL
+v = lapply(v, function(x){data.frame(x)})
+testData = Reduce(function(x,y) merge(x,y,by="Team", all = T),v)
+testData[,2:15] <- apply(testData[,2:15],2,function(x) as.numeric(as.character(x)))
+testData$RedCards <- substring(as.character(testData$Discipline),nchar(as.character(testData$Discipline)))
+testData$YellowCards <- substring(as.character(testData$Discipline),1,nchar(as.character(testData$Discipline))-1)
+testData$Discipline <- NULL
 
 
 #Defense Table
-clicktype = remDr$findElement(using = "css selector", '#stage-team-stats-options > li:nth-child(2) > a:nth-child(1)')
+clicktype <- remDr$findElement(using = "css selector", '#stage-team-stats-options > li:nth-child(2) > a:nth-child(1)')
 
 remDr$mouseMoveToLocation(webElement = clicktype)
 clicktype$click()
-webElem = remDr$findElement(using = "css selector", '#statistics-team-table-defensive')
+webElem <- remDr$findElement(using = "css selector", '#statistics-team-table-defensive')
 
 #Dealing with web can be a real pain especially living with place terrible internet
 #This is area is for error handling. Whenever the table is not populated but instead is of the class try-error (which means it failed), we retry all the steps in getting that table till it works
@@ -175,3 +175,4 @@ Datasetfinal$Pl = NULL
 
 #Convert column types. Again.
 Datasetfinal[,3:37] = apply(Datasetfinal[,3:37],2,function(x) as.numeric(as.character(x)))
+print(Datasetfinal)
