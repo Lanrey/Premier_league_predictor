@@ -32,7 +32,6 @@ class neural_net_predictor:
                 feature_array2.append(d)
         Df = np.array(feature_array2)
         
-        
         clf = MLPRegressor(solver='adam',alpha=0.1, hidden_layer_sizes=(1000,),random_state=0)
         clf.fit(D,output_array)
         predicted_rank = clf.predict(Df)
